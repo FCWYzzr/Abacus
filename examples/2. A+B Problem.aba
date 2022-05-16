@@ -1,0 +1,5 @@
+input: int a, int b
+c = a+b
+output: c
+
+input: pause
