@@ -1,16 +1,34 @@
 package Abacus.Syntax.Tree.TreeElement;
 
+import Abacus.Syntax.Token.Element;
+import Abacus.Syntax.Token.ElementType;
+
 public abstract class SyntaxTreeNode {
-    protected boolean isLeave;
+    protected Element Base;
     protected NodeType type;
 
-    SyntaxTreeNode(boolean isLeave, NodeType NT){
-        this.isLeave = isLeave;
+    SyntaxTreeNode(Element base, NodeType NT){
         this.type = NT;
+        this.Base = base;
     }
 
-    public boolean isFork() {
-        return !isLeave;
+    protected Element getBase(){
+        return Base;
+    }
+    public String getBaseName() {
+        return Base.getName();
+    }
+
+    public ElementType getBaseType() {
+        return Base.getType();
+    }
+
+    public SyntaxTreeFork Fork() {
+        return (SyntaxTreeFork) this;
+    }
+
+    public SyntaxTreeLeaves Leaf() {
+        return (SyntaxTreeLeaves) this;
     }
 
     public NodeType getType(){

@@ -6,13 +6,11 @@ import Abacus.Syntax.Token.Element;
 import java.util.Vector;
 
 public final class SyntaxTreeFork extends SyntaxTreeNode{
-    Element base;
     Vector<SyntaxTreeNode> Children;
 
     public SyntaxTreeFork(Element base,NodeType t){
-        super(false, t);
-        this.base = base;
-        Children = new Vector<SyntaxTreeNode>();
+        super(base, t);
+        Children = new Vector<>();
     }
 
     public SyntaxTreeNode at(int i) throws ArrayIndexOutOfBoundsException{
@@ -31,12 +29,8 @@ public final class SyntaxTreeFork extends SyntaxTreeNode{
         return Children;
     }
 
-    public Element getBase(){
-        return base;
-    }
-
     @Override
     public String toString() {
-        return "Fork{" + base + "}->\n" + Children+'\n';
+        return "Fork{" + getBase() + "}("+type+")->\n" + Children+'\n';
     }
 }

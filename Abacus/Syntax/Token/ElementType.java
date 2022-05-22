@@ -15,5 +15,6 @@ public enum ElementType {
 
     FunctionParamBegin,
     Signal,
-    BIF
+    BIF,
+    FunctionCall
 }

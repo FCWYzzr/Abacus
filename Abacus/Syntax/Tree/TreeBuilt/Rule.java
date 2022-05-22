@@ -11,7 +11,7 @@ public final class Rule{
     boolean flag;
     int cnt=0;
 
-    public boolean initial(Element e) throws Invalid {
+    public boolean initial(Element e) throws Exception {
         switch (e.getType()){
             case Command:
                 switch (e.getName()){
@@ -22,6 +22,8 @@ public final class Rule{
                     case "output":
                         type = NodeType.Multiple_Output;
                         return true;
+                    default:
+                        throw new Invalid("No such command type :"+e);
                 }
             case Type:
                 type = NodeType.Multiple_Declaration;
@@ -31,9 +33,13 @@ public final class Rule{
             case Literal:
             case Number:
             case Operation:
+            case BIF:
                 type = NodeType.Multiple_Expression;
-                return true;
-
+                if (e.getName().equals("(")) {
+                    ++cnt;
+                    return true;
+                }
+                else return !e.getName().equals(")");
             case StopPoint:
                 return false;
 
@@ -41,12 +47,13 @@ public final class Rule{
                 cnt = 1;
                 type = NodeType.Multiple_Block;
                 return true;
+
+
             default:
                 throw new Invalid("No such ele type :"+e);
         }
     }
     public boolean next(Element e) throws Invalid {
-
         switch (type){
             case Multiple_Input:
                 if (e.getType() == ElementType.Identifier) {
@@ -60,13 +67,20 @@ public final class Rule{
                 else if(e.getType() == ElementType.StopPoint){
                     return false;
                 }
-                else throw new SyntaxException("Duplicate type declaration in input");
+                else if (e.getType() == ElementType.Signal && e.getName().equals("paramSplit"))
+                    return true;
+                else throw new SyntaxException("[maybe]:Duplicate type declaration in input");
 
             case Multiple_Output:
                 if (e.getType() == ElementType.Identifier ||
                     e.getType() == ElementType.Number ||
-                    e.getType() == ElementType.Literal)
-                    return true;
+                    e.getType() == ElementType.Literal ||
+                    e.getType() == ElementType.Type ||
+                    e.getType() == ElementType.Operation ||
+                    e.getType() == ElementType.BIF ||
+                    e.getType() == ElementType.FunctionParamBegin||
+                    e.getType() == ElementType.Signal)
+                        return true;
                 else if (e.getType() == ElementType.StopPoint)
                     return false;
 
@@ -83,13 +97,25 @@ public final class Rule{
             case Multiple_Expression:
                 if (e.getType() == ElementType.Identifier ||
                         e.getType() == ElementType.Number ||
-                        e.getType() == ElementType.Operation ||
-                        e.getType() == ElementType.Literal)
+                        e.getType() == ElementType.Literal ||
+                        e.getType() == ElementType.BIF)
                     return true;
+                else if (e.getType() == ElementType.Operation){
+                    if (e.getName().equals("(")) {
+                        ++cnt;
+                        return true;
+                    }
+                    else if (e.getName().equals(")"))
+                        --cnt;
+                    return cnt >=0;
+                }
+                else if (e.getType() ==ElementType.Signal && e.getName().equals("paramSplit"))
+                    return cnt > 0;
                 else if (e.getType() == ElementType.Command &&
                          e.getName().equals("inf"))
                     return true;
-                else if (e.getType() == ElementType.StopPoint || (e.getType() ==ElementType.Signal && e.getName().equals("if")))
+                else if (e.getType() == ElementType.StopPoint ||
+                        (e.getType() ==ElementType.Signal && e.getName().equals("if")))
                     return false;
                 else
                     throw new SyntaxException("Syntax: id1 op id2, error:"+e);
@@ -100,7 +126,6 @@ public final class Rule{
                 else if (e.getType() == ElementType.Block_end)
                     -- cnt;
                 return cnt != 0;
-
             case Multiple_If:
                 return false;
             default:

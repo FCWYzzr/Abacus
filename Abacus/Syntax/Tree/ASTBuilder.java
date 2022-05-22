@@ -4,7 +4,6 @@ import Abacus.Syntax.Token.Element;
 import Abacus.Syntax.Tree.TreeBuilt.TreeBuilder;
 import Abacus.Syntax.Tree.TreeElement.NodeType;
 import Abacus.Syntax.Tree.TreeElement.SyntaxTreeFork;
-import org.omg.CORBA.DynAnyPackage.Invalid;
 
 import java.util.Vector;
 

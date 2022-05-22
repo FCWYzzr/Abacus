@@ -9,6 +9,7 @@ public enum NodeType {
     Single_String,
     Single_Identifier,
     Single_Literal,
+    Single_TypeCast,
 
     Multiple_Stmt,
     Multiple_Block,
@@ -19,5 +20,7 @@ public enum NodeType {
     Multiple_Output,
     Multiple_Filter,
     Multiple_Declaration,
+    Multiple_FunctionCall,
     Multiple_Loop
+
 }

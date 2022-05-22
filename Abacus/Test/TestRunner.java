@@ -8,7 +8,7 @@ import Abacus.Syntax.Tree.TreeElement.SyntaxTreeFork;
 public class TestRunner {
     public static void main(String[] args) {
         try {
-            TokenArray ta = new TokenArray("A+B.aba");
+            TokenArray ta = new TokenArray("vector.aba");
             //System.out.println(ta.getArray());
             SyntaxTreeFork Root = ASTBuilder.BuildFromTokens(ta.getArray());
             //System.out.println(Root);

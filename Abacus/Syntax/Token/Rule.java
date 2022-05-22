@@ -18,13 +18,12 @@ public final class Rule {
         return c == '+' ||
                c == '-' ||
                c == '*' ||
+               c == '·' ||
                c == '/' ||
                c == '=' ||
                c == '%' ||
                c == '&' ||
                c == '|' ||
-               c == '(' ||
-               c == ')' ||
                c == '[' ||
                c == ']' ||
                c == '<' ||
@@ -40,8 +39,7 @@ public final class Rule {
         return  c == ' '  ||
                 c == '\t' ||
                 c == '\r' ||
-                c == ':'||
-                c == ',';
+                c == ':';
     }
 
     public static boolean initial(int begin) throws SyntaxException{
@@ -90,7 +88,8 @@ public final class Rule {
                 s.equals("inf") ||
                 s.equals("Y") ||
                 s.equals("N") ||
-                s.equals("is");
+                s.equals("is") ||
+                s.equals("break");
     }
     public static boolean isType(String s){
         return  s.equals("int") ||
@@ -104,10 +103,19 @@ public final class Rule {
         return  s.equals("sqrt") ||
                 s.equals("absolute") ||
                 s.equals("round") ||
-                s.equals("power") ||
                 s.equals("norm") ||
-                s.equals("inner") ||
-                s.equals("outer") ||
-                s.equals("element");
+                s.equals("power") ||
+
+                s.equals("build")||
+                s.equals("summation")||
+                s.equals("average")||
+                s.equals("variance") ||
+
+                s.equals("Triangle")||
+                s.equals("Diagonal")||
+                s.equals("Determinant")||
+                s.equals("Minor")||
+                s.equals("Adjoint")||
+                s.equals("Inverse");
     }
 }

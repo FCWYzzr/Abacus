@@ -16,6 +16,7 @@ public class TokenArray {
         boolean f=true;
         try (FileReader FR = new FileReader(filename)) {
             ch = FR.read();
+
             while(ch != -1){
                 if (f)
                  switch (ch){
@@ -36,8 +37,16 @@ public class TokenArray {
                          ch = FR.read();
                          break;
                      case '(':
-                         if (arr.lastElement().getType() == ElementType.BIF)
-                         arr.add(Element.paramBegin);
+                         arr.add(new Element(ElementType.Operation, "("));
+                         ch = FR.read();
+                         break;
+                     case ')':
+                         arr.add(new Element(ElementType.Operation, ")"));
+                         ch = FR.read();
+                         break;
+                     case ',':
+                         arr.add(new Element(ElementType.Signal, "paramSplit"));
+                         ch = FR.read();
                          break;
                      default:
                         if(Rule.initial(ch)){

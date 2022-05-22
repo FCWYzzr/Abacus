@@ -47,6 +47,10 @@ public class Element {
                 this.type = ElementType.FunctionParamBegin;
                 Name = "(..";
                 break;
+            case 'f':
+                this.type = ElementType.FunctionCall;
+                Name = "func";
+                break;
             default:
                 throw new ValueException("error char: "+ch);
         }
@@ -84,4 +88,5 @@ public class Element {
     public static Element Loop = new Element('l');
     public static Element IfBegin = new Element('?');
     public static Element paramBegin = new Element('p');
+    public static Element Func = new Element('f');
 }

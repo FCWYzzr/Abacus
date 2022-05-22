@@ -28,13 +28,27 @@ class Utils{
         level.put("+..", 4);
         level.put("-..", 4);
 
-
-        level.put("(", 0xfff);
+        level.put("(..", 0);
+        level.put("paramSplit", -1);
     }
     static boolean greater_than(String a, String b) throws SyntaxException{
         if (level.containsKey(a) && level.containsKey(b))
             return level.get(a) > level.get(b);
-        throw new SyntaxException("Invalid Syntax: Expression "+a+" or "+b);
+        throw new SyntaxException("Invalid Expression: "+a+" or "+b);
+    }
+
+
+    static SyntaxTreeLeaves CastElement(Element e) throws Exception {
+        switch (e.getType()){
+            case Identifier:
+                return new SyntaxTreeLeaves(e, NodeType.Single_Identifier);
+            case Number:
+                return new SyntaxTreeLeaves(e, NodeType.Single_Number);
+            case Literal:
+                return new SyntaxTreeLeaves(e, NodeType.Single_Literal);
+            default:
+                throw new Exception("Can not be cast");
+        }
     }
 }
 
@@ -105,6 +119,7 @@ public class TreeBuilder {
                         }
                         else if (Tokens.get(b).getType() == ElementType.Identifier ||
                                 Tokens.get(b).getType() == ElementType.Number ||
+                                Tokens.get(b).getType() == ElementType.BIF ||
                                 Tokens.get(b).getName().equals("+") ||
                                 Tokens.get(b).getName().equals("-"))
                             Root.push(BuildExpression(Tokens, b, Begin));
@@ -114,8 +129,8 @@ public class TreeBuilder {
                         break;
                     case Multiple_Block:
                         Root.push(Build(Tokens, b+1, Begin++, NodeType.Multiple_Block));
-
                         break;
+
                     default:
                         throw new SyntaxException("Syntax not implement "+rule.getType());
                 }
@@ -201,37 +216,67 @@ public class TreeBuilder {
         return Declaration;
     }
     public static SyntaxTreeNode BuildExpression(Vector<Element> Tokens, int Begin, int End) throws Exception {
+        //System.out.println(Tokens.subList(Begin,End));
         Stack<Element> Operator = new Stack<>();
-        Queue<Element> Suffix = new LinkedList<>();
+        Deque<Element> Suffix = new LinkedList<>();
         boolean lastIsOp = true;
 
         while (Begin != End) {
+            //System.out.println(Operator);
             if (Tokens.get(Begin).getType() == ElementType.Identifier ||
-                    Tokens.get(Begin).getType() == ElementType.Number) {
+                Tokens.get(Begin).getType() == ElementType.Number ||
+                Tokens.get(Begin).getType() == ElementType.BIF) {
                 Suffix.offer(Tokens.get(Begin++));
                 lastIsOp = false;
             }
             else{
                 String op = Tokens.get(Begin).getName();
-                if (op.equals("inf"))
-                    throw new Exception("inf could not use in normal expression");
-                else if (op.equals(")")){
-                    while(!Operator.peek().getName().equals("(")){
-                        Suffix.offer(Operator.peek());
-                        Operator.pop();
-                    }
-                    lastIsOp = true;
-                    Operator.pop();
-                }
-                else{
-                    if (lastIsOp &&(op.equals("+") || op.equals("-")))
-                        Tokens.get(Begin).ExtendName("..");
-                    while(!Operator.empty() && !Utils.greater_than(op,Operator.peek().getName())){
-                        Suffix.offer(Operator.peek());
-                        Operator.pop();
-                    }
-                    lastIsOp = true;
-                    Operator.push(Tokens.get(Begin));
+                switch (op) {
+                    case "inf":
+                        throw new Exception("inf could not use in normal expression");
+                    case "(":
+                        if (lastIsOp)
+                            Operator.push(Tokens.get(Begin));
+                        else
+                            Operator.push(Element.paramBegin);
+                        lastIsOp = true;
+                        break;
+                    case "paramSplit":
+                        while (!Operator.peek().getName().equals("(") &&
+                                !Operator.peek().getName().equals("(..")) {
+                            Suffix.offer(Operator.peek());
+                            Operator.pop();
+                        }
+                        Suffix.offer(Tokens.get(Begin));
+                        lastIsOp = true;
+                        break;
+                    case ")":
+                        while (!Operator.peek().getName().equals("(") &&
+                                !Operator.peek().getName().equals("(..")) {
+                            Suffix.offer(Operator.peek());
+                            Operator.pop();
+                        }
+                        if (Operator.peek().getName().equals("(")) {
+                            lastIsOp = false;
+                            Operator.pop();
+                        } else if (Operator.peek().getName().equals("(..")) {
+                            lastIsOp = false;
+                            Operator.pop();
+                            Suffix.offer(Element.paramBegin);
+                        }
+                        break;
+                    default:
+                        if (lastIsOp && (op.equals("+") || op.equals("-")))
+                            Tokens.get(Begin).ExtendName("..");
+                        while (!Operator.empty()
+                                && !(Operator.peek().getName().equals("(") || Operator.peek().getName().equals("(.."))
+                                && !Utils.greater_than(op, Operator.peek().getName())) {
+                            Suffix.offer(Operator.peek());
+                            Operator.pop();
+                        }
+                        lastIsOp = true;
+                        Operator.push(Tokens.get(Begin));
+                        break;
                 }
                 ++ Begin;
             }
@@ -258,6 +303,26 @@ public class TreeBuilder {
                 case Identifier:
                     NodeStack.push(new SyntaxTreeLeaves(top, NodeType.Single_Identifier));
                     break;
+                case Literal:
+                    NodeStack.push(new SyntaxTreeLeaves(top, NodeType.Single_Literal));
+                    break;
+                case BIF:
+                    NodeStack.push(new SyntaxTreeFork(top, NodeType.Multiple_FunctionCall));
+                    break;
+                case Signal:
+                    if (top.getName().equals("paramSplit")){
+                        tmp1 = NodeStack.peek();
+                        NodeStack.pop();
+                        NodeStack.peek().Fork().push(tmp1);
+                    }
+                    break;
+                case FunctionParamBegin:
+                    if (top.getType() != ElementType.FunctionCall){
+                        tmp1 = NodeStack.peek();
+                        NodeStack.pop();
+                        NodeStack.peek().Fork().push(tmp1);
+                    }
+                    break;
                 case Operation:
                     switch (top.getName()) {
                         case "+..":
@@ -268,6 +333,7 @@ public class TreeBuilder {
                             tmp3.push(tmp1);
                             NodeStack.push(tmp3);
                             break;
+
                         default:
                             tmp1 = NodeStack.peek();
                             NodeStack.pop();
@@ -280,8 +346,9 @@ public class TreeBuilder {
                             break;
                     }
                     break;
+
                 default:
-                    throw new SyntaxException("Invalid Expression");
+                    throw new SyntaxException("Invalid Expression: "+top);
             }
         }
         assert NodeStack.size() == 1;
@@ -291,7 +358,9 @@ public class TreeBuilder {
     public static SyntaxTreeNode BuildInput(Vector<Element> Tokens, int Begin, int End) throws SyntaxException{
         SyntaxTreeFork Input = new SyntaxTreeFork(Tokens.get(Begin ++),NodeType.Multiple_Input);
         while (Begin != End)
-            if (Tokens.get(Begin).getType() == ElementType.Type){
+            if (Tokens.get(Begin).getType() == ElementType.Signal)
+                ++ Begin;
+            else if (Tokens.get(Begin).getType() == ElementType.Type){
                 Input.push(BuildDeclaration(Tokens, Begin, Begin + 2));
                 Begin += 2;
             }
@@ -303,21 +372,112 @@ public class TreeBuilder {
                 throw new SyntaxException("Input Syntax not allow type:"+Tokens.get(Begin).getType());
         return Input;
     }
-    public static SyntaxTreeNode BuildOutput(Vector<Element> Tokens, int Begin, int End){
+    public static SyntaxTreeNode BuildOutput(Vector<Element> Tokens, int Begin, final int End) throws Exception {
         SyntaxTreeFork Output = new SyntaxTreeFork(Tokens.get(Begin ++),NodeType.Multiple_Output);
-        for (; Begin != End; ++ Begin)
-        switch (Tokens.get(Begin).getType()){
-            case Identifier:
-                Output.push(new SyntaxTreeLeaves(Tokens.get(Begin), NodeType.Single_Identifier));
-                break;
-            case Literal:
-                Output.push(new SyntaxTreeLeaves(Tokens.get(Begin), NodeType.Single_Literal));
-                break;
-            case Number:
-                Output.push(new SyntaxTreeLeaves(Tokens.get(Begin), NodeType.Single_Number));
-                break;
+        boolean toBeCast=false;
+        Rule rule = new Rule();
+        int b=Begin;
+        boolean isFirst=true;
+
+        if (End - Begin == 1) {
+            switch (Tokens.get(Begin).getType()) {
+                case Identifier:
+                    Output.push(new SyntaxTreeLeaves(Tokens.get(Begin), NodeType.Single_Identifier));
+                    break;
+                case Literal:
+                    Output.push(new SyntaxTreeLeaves(Tokens.get(Begin), NodeType.Single_Literal));
+                    break;
+                case Number:
+                    Output.push(new SyntaxTreeLeaves(Tokens.get(Begin), NodeType.Single_Number));
+                    break;
+                case Signal:
+                    break;
+            }
+            return Output;
+        }
+
+        while (Begin != End) {
+            if(isFirst){
+                if (Tokens.get(Begin).getType() == ElementType.Type) {
+                    toBeCast = true;
+                    b = Begin;
+                    isFirst = false;
+                }
+                else if (Tokens.get(Begin).getType() != ElementType.Signal){
+                    if (rule.initial(Tokens.get(Begin))) {
+                        b = Begin;
+                        isFirst = false;
+                    }
+                }
+                ++Begin;
+                if(toBeCast)rule.initial(Tokens.get(Begin));
+            }
+            else if (rule.next(Tokens.get(Begin))){
+                ++Begin;
+            }
+            else if(Begin == b + 1) {
+                isFirst = true;
+                switch (Tokens.get(Begin).getType()) {
+                    case Identifier:
+                        Output.push(new SyntaxTreeLeaves(Tokens.get(Begin++), NodeType.Single_Identifier));
+                        break;
+                    case Literal:
+                        Output.push(new SyntaxTreeLeaves(Tokens.get(Begin++), NodeType.Single_Literal));
+                        break;
+                    case Number:
+                        Output.push(new SyntaxTreeLeaves(Tokens.get(Begin++), NodeType.Single_Number));
+                        break;
+
+                }
+            }
+            else {
+                isFirst = true;
+                if(toBeCast) {
+                    toBeCast = false;
+                    //System.out.println(Tokens.subList(b, Begin));
+                    Output.push(TypeCast(Tokens, b, Begin));
+                }
+                else{
+                    //System.out.println(Tokens.subList(b,Begin));
+                    Output.push(BuildExpression(Tokens, b, Begin));
+                }
+            }
+        }
+        if(!isFirst){
+            if(Begin == b + 1) {
+                switch (Tokens.get(Begin).getType()) {
+                    case Identifier:
+                        Output.push(new SyntaxTreeLeaves(Tokens.get(Begin+1), NodeType.Single_Identifier));
+                        break;
+                    case Literal:
+                        Output.push(new SyntaxTreeLeaves(Tokens.get(Begin+1), NodeType.Single_Literal));
+                        break;
+                    case Number:
+                        Output.push(new SyntaxTreeLeaves(Tokens.get(Begin+1), NodeType.Single_Number));
+                        break;
+                    case Signal:
+                        break;
+                }
+            }
+            else if(toBeCast) {
+                Output.push(TypeCast(Tokens, b, Begin));
+            }
+            else {
+                //System.out.println(Tokens.subList(b,Begin));
+                Output.push(BuildExpression(Tokens, b, Begin));
+            }
+
         }
         return Output;
     }
 
+    public static SyntaxTreeFork TypeCast(Vector<Element> Tokens, int Begin, final int End) throws Exception {
+        SyntaxTreeFork cast = new SyntaxTreeFork(Tokens.get(Begin++), NodeType.Single_TypeCast);
+        //System.out.println(Tokens.subList(Begin,End));
+        if (Begin == End - 1)
+            cast.push(Utils.CastElement(Tokens.get(Begin)));
+        else
+            cast.push(BuildExpression(Tokens, Begin, End));
+        return cast;
+    }
 }
